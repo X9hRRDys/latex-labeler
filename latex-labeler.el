@@ -585,7 +585,7 @@ found within the local variables region."
         (eol nil))
     (goto-char (point-min))
     (when (re-search-forward
-           "\\(^[ \t]*%+[ \t]*\\)local variables:[ \t]*\\(.*\\)" nil t)
+           "\\(^[ \t]*%+[ \t]*\\)local\  variables:[ \t]*\\(.*\\)" nil t)
       (setq beg (match-end 0))
       (setq bol (match-string-no-properties 1))
       (setq eol (match-string-no-properties 2))
@@ -612,7 +612,7 @@ REGION-DATA is a value of
                                  "latex-labeler-prefix: \"" prefix "\" "
                                  eol "\n")))))
     (progn (goto-char (point-max))
-           (insert (concat "\n% local variables:\n% latex-labeler-prefix: \""
+           (insert (concat "\n% local\  variables:\n% latex-labeler-prefix: \""
                            prefix "\"\n% end:")))))
 
 ;;; main
