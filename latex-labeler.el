@@ -64,7 +64,7 @@
   :prefix "latex-labeler-")
 
 (defcustom latex-labeler-math-envs '("align" "equation" "eqnarray" "gather"
-                                    "multline" "subequations" "alignat" "flalign")
+                                     "multline" "subequations" "alignat" "flalign")
   "List of math environments to be labeled."
   :type '(repeat string))
 
@@ -495,11 +495,10 @@ label replacements."
   (when (string-match regexp label)
     (let ((newlabel (concat prefix (latex-labeler-counter-to-string counter))))
       (unless (string= label newlabel)
-        (progn
-          (goto-char marker)
-          (looking-at label)
-          (replace-match newlabel t)
-          (push (cons label newlabel) changelist)))))
+        (goto-char marker)
+        (looking-at label)
+        (replace-match newlabel t)
+        (push (cons label newlabel) changelist))))
   changelist)
 
 (defun latex-labeler-insert-new-label (marker prefix counter)
@@ -508,8 +507,7 @@ The new label is constructed using PREFIX and COUNTER."
   (goto-char marker)
   (skip-chars-backward " \t\n")
   (insert latex-labeler-string-before-label)
-  (insert (concat "\\label{"
-                  prefix (latex-labeler-counter-to-string counter) "}"))
+  (insert "\\label{" prefix (latex-labeler-counter-to-string counter) "}")
   (when latex-labeler-label-with-indent
     (indent-according-to-mode))
   (insert latex-labeler-string-after-label))
@@ -607,13 +605,13 @@ REGION-DATA is a value of
              (concat bol "[ \t]*latex-labeler-prefix:[ \t]*\"\\(.*\\)\"[ \t]*" eol)
              (cdr region) t)
             (replace-match prefix t nil nil 1)
-          (progn (goto-char (cdr region))
-                 (insert (concat bol
-                                 "latex-labeler-prefix: \"" prefix "\" "
-                                 eol "\n")))))
-    (progn (goto-char (point-max))
-           (insert (concat "\n% local\  variables:\n% latex-labeler-prefix: \""
-                           prefix "\"\n% end:")))))
+          (goto-char (cdr region))
+          (insert bol
+                  "latex-labeler-prefix: \"" prefix "\" "
+                  eol "\n")))
+    (goto-char (point-max))
+    (insert "\n% local\  variables:\n% latex-labeler-prefix: \""
+            prefix "\"\n% end:")))
 
 ;;; main
 (defun latex-labeler-main (prefix force)
