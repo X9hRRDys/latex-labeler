@@ -30,24 +30,25 @@ equations within `subequations` environment. We recommend using LaTeX
 Labeler with AUCTeX or YaTeX.
 
 # Installation
+1.  LaTeX Labeler is available on
+    [MELPA](https://melpa.org/#/latex-labeler):
 
-1.  Clone this repository or download the `latex-labeler.el` file.
+    `M-x` `package-install` `RET` `latex-labeler` `RET`.
 
-2.  Place the `latex-labeler.el` file in your Emacs `load-path`, such as
-    `~/.emacs.d/site-lisp/latex-labeler/`.
-
-3.  Add the following code to your Emacs configuration file (e.g.
-    `~/.emacs.d/init.el`):
+2.  If you use AUCTeX, add the following code to your Emacs
+    configuration file (e.g.  `~/.emacs.d/init.el`):
 
     ``` elisp
-    (add-to-list 'load-path "~/.emacs.d/site-lisp/latex-labeler/")
-    (require 'latex-labeler)
+    (with-eval-after-load 'latex
+      (require 'latex-labeler))
     ```
 
-    Replace `"~/.emacs.d/site-lisp/latex-labeler/"` with the actual path
-    where you placed the `latex-labeler.el` file.
+    If you use YaTeX instead of AUCTeX, add the following code:
 
-4.  Restart Emacs to apply changes.
+    ``` elisp
+    (with-eval-after-load 'yatex
+      (require 'latex-labeler))
+    ```
 
 # Usage
 
@@ -59,9 +60,9 @@ updating references.
 -   `latex-labeler-update-force`: Forcefully update all labels and
     references, regardless of the format.
 -   `latex-labeler-change-prefix-and-update`: Change the label prefix
-    interactively and updates labels. When you change the prefix, LaTeX
-    Labeler appends the necessary local variables configuration to your
-    LaTeX file.
+    interactively and updates labels. When you change the prefix,
+    LaTeX Labeler appends the necessary local variables configuration
+    to your LaTeX file.
 
 ## Example
 
@@ -70,15 +71,17 @@ updating references.
 
     ![](https://github.com/X9hRRDys/latex-labeler/blob/screenshots/screenshots/demo.png)
 
-2.  Use `M-x` `latex-labeler-update` command to update labels that match
-    the \"eq: + number\" format. This will make the labels in your LaTeX
-    file match the equation numbers in the PDF. Additionally, a
-    reference using `eqref` is updated.
+2.  Use `M-x` `latex-labeler-update` command to update labels that
+    match the \"eq: + number\" format. In the place where there are no
+    labels, new labels are inserted in the \"eq: + number\" format.
+    This will make the labels in your LaTeX file match the equation
+    numbers in the PDF. Additionally, a reference using `eqref` is
+    updated.
 
     ![](https://github.com/X9hRRDys/latex-labeler/blob/screenshots/screenshots/latex_labeler_update.png)
 
-3.  Use `M-x` `latex-labeler-update-force` command to update all labels
-    and references, regardless of the format.
+3.  Use `M-x` `latex-labeler-update-force` command to update all
+    labels and references, regardless of the format.
 
     ![](https://github.com/X9hRRDys/latex-labeler/blob/screenshots/screenshots/latex_labeler_update_force.png)
 
@@ -98,8 +101,8 @@ references in other files included using `\input{...}` or
 `\include{...}`. If you work with a large document spanning multiple
 files, we recommend the following workflow:
 
-1.  Divide your LaTeX document into files at units where equation labels
-    are reset, such as chapters or sections.
+1.  Divide your LaTeX document into files at units where equation
+    labels are reset, such as chapters or sections.
 
 2.  Use `latex-labeler-change-prefix-and-update` to set a label prefix
     for each individual file.
@@ -110,8 +113,8 @@ files, we recommend the following workflow:
 
 # Examples of customization
 
--   To assign key bindings to the three main functions, you can set them up as follows.
-    If you use AUCTeX,
+-   To assign key bindings to the three main functions, you can set
+    them up as follows.  If you use AUCTeX,
 
     ``` elisp
     (with-eval-after-load 'latex
@@ -130,8 +133,8 @@ files, we recommend the following workflow:
     ```
 
 -   You can add math environments to be labeld. If you want to label
-    equations within a math environment `\begin{newenv}`...`\end{newenv}`,
-    configure it as follows:
+    equations within a math environment
+    `\begin{newenv}`...`\end{newenv}`, configure it as follows:
 
     ``` elisp
     (setq latex-labeler-math-envs
@@ -167,9 +170,9 @@ files, we recommend the following workflow:
 
     ![](https://github.com/X9hRRDys/latex-labeler/blob/screenshots/screenshots/subequations.png)
 
--   If you want to use labels like `A1`, `A2`, ... instead of `eq:1`, `eq:2`,
-    ... for a specific file, add the following to the bottom of the
-    LaTeX file:
+-   If you want to use labels like `A1`, `A2`, ... instead of `eq:1`,
+    `eq:2`, ... for a specific file, add the following to the bottom
+    of the LaTeX file:
 
     ``` latex
     % local variables:
