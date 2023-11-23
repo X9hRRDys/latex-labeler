@@ -97,7 +97,7 @@ updating references.
 
 When working with a LaTeX file that includes sections, you can include
 the section number in equation numbering in the compiled document. This
-can be archieved by adding the following lines to the LaTeX preamble:
+can be achieved by adding the following lines to the LaTeX preamble:
 
 ``` latex
 \numberwithin{equation}{section}
@@ -165,7 +165,7 @@ multiple files, we recommend the following workflow:
       (define-key YaTeX-mode-map (kbd "C-c C-t p") #'latex-labeler-change-prefix-and-update))
     ```
 
--   You can add math environments to be labeld. If you want to label
+-   You can add math environments to be labeled. If you want to label
     equations within a math environment `\begin{newenv}` ...
     `\end{newenv}`, configure it as follows:
 
