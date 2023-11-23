@@ -5,7 +5,8 @@
 ;; Author: X9hRRDys
 ;; Keywords: tools
 
-;; Version: 1.0.0
+;; Created: 2023
+;; Version: 2.0.0
 ;; Package-Requires: ((emacs "28.1"))
 ;; URL: https://github.com/X9hRRDys/latex-labeler
 
@@ -70,6 +71,19 @@
 ;; prefix, LaTeX Labeler appends the necessary local variables
 ;; configuration to your LaTeX file.
 
+;; If you want to append section numbers to equation labels for a
+;; specific file, add the following lines at the end of the LaTeX file:
+;;
+;; % local variables:
+;; % latex-labeler-with-section-counter: t
+;; % end:
+;;
+;; If you prefer to set this configuration globally, add the following
+;; line to your Emacs configuration file:
+;;
+;; (setq latex-labeler-with-section-counter t)
+;;
+
 ;;; Code:
 (defgroup latex-labeler nil
   "Simplify equation labeling in LaTeX."
@@ -82,11 +96,16 @@
   :type '(repeat string))
 
 (defcustom latex-labeler-nonumber-at-linebreaks '("multline" "subequations")
-  "Math environments where line breaks occur without numbering."
+  "Math environments where line breaks occur without labeling."
   :type '(repeat string))
 
 (defcustom latex-labeler-refs '("eqref" "ref" "pageref")
-  "List of reference command."
+  "List of reference commands."
+  :type '(repeat string))
+
+(defcustom latex-labeler-commands-containing-linebreaks '("substack")
+  "List of commands that can have line breaks `\\\\'.
+Line breaks in the commands will be ignored in the search."
   :type '(repeat string))
 
 (defcustom latex-labeler-initial-equation-number 1
@@ -117,8 +136,10 @@
   :local t
   :safe #'stringp)
 
-(defcustom latex-labeler-subprefix-separator ""
-  "Separator between subprefix and counter."
+(defcustom latex-labeler-subformat-separator ""
+  "Separator between subformat and subcounter.
+The subformat is a format applied in subequations environments.
+The subcounter is a counter for subequations environments."
   :type 'string
   :local t
   :safe #'stringp)
@@ -142,18 +163,42 @@
   :safe #'booleanp)
 
 (defcustom latex-labeler-preserve-local-prefix t
-  "If the value is t, the local prefix setting is added when updating."
+  "If t, the local prefix setting is added after the update."
   :type 'boolean
   :local t
   :safe #'booleanp)
 
 (defcustom latex-labeler-update-reftex nil
-  "Update RefTeX after labeling.
-If the value is t and `reftex-mode' is enabled, update RefTeX
-after labeling."
-  :type 'boolern
+  "If t and `reftex-mode' is enabled, update RefTeX after labeling."
+  :type 'boolean
   :local t
   :safe #'booleanp)
+
+(defcustom latex-labeler-with-section-counter nil
+  "If the value is t, include a section counter in the label format."
+  :type 'boolean
+  :local t
+  :safe #'booleanp)
+
+(defcustom latex-labeler-with-appendix-letter nil
+  "If t, include an appendix letter in the label format.
+It is assumed that each appendix is separated by a section.  When
+the value of `latex-labeler-with-section-counter' is t, each
+label in the appendix sections is appended with the appendix
+letter, regardless of the value of
+`latex-labeler-with-appendix-letter'."
+  :type 'boolean
+  :local t
+  :safe #'booleanp)
+
+(defcustom latex-labeler-initial-section-counter 1
+  "Initial section counter."
+  :type '(choice (string :tag "String 'a' or 'A'" "a" "A")
+                 (integer :tag "Integer greater than or equal to 1"))
+  :local t
+  :safe (lambda (value)
+          (or (and (stringp value) (length= value 1))
+              (and (integerp value) (<= 1 value)))))
 
 (require 'reftex-parse nil t)
 
@@ -222,8 +267,7 @@ The optional argument LIMIT is a position that bounds the search."
       (if (string= "begin" (match-string-no-properties 1))
           (setq level (1+ level))
         (setq level (1- level))))
-    (when (= level 0)
-      t)))
+    (when (= level 0) t)))
 
 (defun latex-labeler-find-env (&optional limit)
   "Search a math environment from the current position.
@@ -281,6 +325,16 @@ boundaries of a math environment."
     (push (cons beg (cdr region)) stack)
     (nreverse stack)))
 
+(defun latex-labeler-find-command-regexp (regexp &optional limit)
+  "Find `REGEXP{...}' from the current position.
+Return a dot pair whose car is the position of the beginning of
+the `REGEXP{...}' and cdr is the end.  The optional argument
+LIMIT is a position that bounds the search."
+  (when (latex-labeler-re-search (concat regexp "{") limit t)
+    (backward-char)
+    (forward-sexp)
+    (cons (match-beginning 0) (point))))
+
 (defun latex-labeler-point-inside-regions-p (regions pos)
   "Return t if POS is inside of an element of REGIONS.
 Each element of REGIONS mutst have a form (beg . end)."
@@ -289,6 +343,23 @@ Each element of REGIONS mutst have a form (beg . end)."
       (if (<= (car elm) pos (cdr elm))
           t
         (latex-labeler-point-inside-regions-p regions pos)))))
+
+(defun latex-labeler-find-ignored-command-regions (region)
+  "Find regions within REGION containing commands with line breaks."
+  (goto-char (car region))
+  (let ((result t)
+        (stack nil))
+    (while (setq result
+                 (latex-labeler-find-command-regexp
+                  (concat
+                   "\\\\\\("
+                   (mapconcat #'identity
+                              latex-labeler-commands-containing-linebreaks
+                              "\\|")
+                   "\\)[ \t\n]*")
+                  (cdr region)))
+      (push result stack))
+    (nreverse stack)))
 
 (defun latex-labeler-find-subregions (region)
   "Separate REGION into subregions.
@@ -302,11 +373,15 @@ the inner boundary of the subregion."
         (sub-beg (car region))
         (limit (cdr region))
         (non-nested-regions
-         (latex-labeler-find-non-nested-regions region)))
+         (latex-labeler-find-non-nested-regions region))
+        (ignored-command-regions
+         (latex-labeler-find-ignored-command-regions region)))
     (goto-char sub-beg)
     (while (latex-labeler-re-search "\\\\\\\\" limit t)
-      (when (latex-labeler-point-inside-regions-p non-nested-regions
-                                                  (match-beginning 0))
+      (when (and (latex-labeler-point-inside-regions-p non-nested-regions
+                                                       (match-beginning 0))
+                 (not (latex-labeler-point-inside-regions-p
+                       ignored-command-regions (match-beginning 0))))
         (push (cons sub-beg (match-beginning 0)) stack)
         (setq sub-beg (match-end 0))
         (goto-char sub-beg)))
@@ -434,6 +509,10 @@ REGION has a form (beg . end)."
   (cons (latex-labeler-mark (car region))
         (latex-labeler-mark (cdr region))))
 
+(defun latex-labeler-mark-regions (regions)
+  "Mark region for each element of REGIONS."
+  (mapcar #'latex-labeler-mark-region regions))
+
 (defun latex-labeler-mark-subequations (labeldata)
   "Generate marker in a subequations environment.
 LABELDATA is an element of a value of
@@ -490,23 +569,25 @@ previous character."
   "Construct a regular expression to match auto-inserted labels.
 If FORCE is non-nil, it will match any label, regardless of its
 format.  If FORCE is nil, it will match labels following the
-specific format defined by the `latex-labeler-prefix`."
+specific format defined by the `latex-labeler-label-format`."
   (if force
       "[^{}]*"
     (concat "^" latex-labeler-prefix latex-labeler-prefix-separator
-            "[0-9]+\\(" latex-labeler-subprefix-separator "[a-z]\\)?$")))
+            "\\([a-zA-Z]\.\\|[0-9]+\.\\)?"
+            "[0-9]+\\(" latex-labeler-subformat-separator
+            "\\([a-zA-Z]\\|[0-9]+\\)\\)?$")))
 
-(defun latex-labeler-replace-old-label (marker label regexp prefix counter
+(defun latex-labeler-replace-old-label (marker label regexp format counter
                                                changelist)
   "Replace an old label with a new one.
 This function replaces an old label, represented by LABEL.  The
 replacement occurs at the position indicated by the MARKER.  If
 LABEL matches the format defined by REGEXP, it is replaced with a
-new label constructed using PREFIX and COUNTER.  Additionally,
+new label constructed using FORMAT and COUNTER.  Additionally,
 this function updates the CHANGELIST to keep a record of the
 label replacements."
   (when (string-match regexp label)
-    (let ((newlabel (concat prefix (latex-labeler-counter-to-string counter))))
+    (let ((newlabel (concat format (latex-labeler-counter-to-string counter))))
       (unless (string= label newlabel)
         (goto-char marker)
         (looking-at label)
@@ -514,25 +595,25 @@ label replacements."
         (push (cons label newlabel) changelist))))
   changelist)
 
-(defun latex-labeler-insert-new-label (marker prefix counter)
+(defun latex-labeler-insert-new-label (marker format counter)
   "Insert a new label at a position indicated by MARKER.
-The new label is constructed using PREFIX and COUNTER."
+The new label is constructed using FORMAT and COUNTER."
   (goto-char marker)
   (skip-chars-backward " \t\n")
   (insert latex-labeler-string-before-label)
-  (insert "\\label{" prefix (latex-labeler-counter-to-string counter) "}")
+  (insert "\\label{" format (latex-labeler-counter-to-string counter) "}")
   (when latex-labeler-label-with-indent
     (indent-according-to-mode))
   (insert latex-labeler-string-after-label))
 
 (defun latex-labeler-replace-labels-in-env
-    (marker-data regexp prefix counter changelist)
+    (marker-data regexp format counter changelist)
   "Replace labels within a math environment.
 MARKER-DATA is an element of the list generated by
 `latex-labeler-generate-marker-in-region'.  It contains markers
 and old labels within a specific math environment.  REGEXP is a
 regular expression used to match old labels.  The new label is
-constructed using PREFIX and COUNTER.  CHANGELIST is a list of
+constructed using FORMAT and COUNTER.  CHANGELIST is a list of
 label replacements, where each element has a form (old-label
 . new-label)."
   (let ((marker-data-in-env (car marker-data))
@@ -543,31 +624,31 @@ label replacements, where each element has a form (old-label
         (if label
             (setq changelist
                   (latex-labeler-replace-old-label
-                   marker label regexp prefix counter changelist))
-          (latex-labeler-insert-new-label marker prefix counter)))
+                   marker label regexp format counter changelist))
+          (latex-labeler-insert-new-label marker format counter)))
       (setq counter (latex-labeler-1+ counter)))
     (when subeq-labelable-region
-      (let* ((subprefix (concat prefix
+      (let* ((subformat (concat format
                                 (latex-labeler-counter-to-string
                                  (latex-labeler-1- counter))
-                                latex-labeler-subprefix-separator))
+                                latex-labeler-subformat-separator))
              (subcounter latex-labeler-initial-subcounter)
              (subchangelist (latex-labeler-insert-labels
                              subeq-labelable-region
-                             regexp subprefix subcounter nil)))
+                             regexp subformat subcounter nil)))
         (setq changelist (append subchangelist changelist))))
     (cons changelist counter)))
 
-(defun latex-labeler-insert-labels (region regexp prefix counter changelist)
+(defun latex-labeler-insert-labels (region regexp format counter changelist)
   "Insert labels in REGION.
 REGEXP is a regular expression used to match old labels.  The new
-label is constructed using PREFIX and COUNTER.  CHANGELIST is a
+label is constructed using FORMAT and COUNTER.  CHANGELIST is a
 list of label replacements, where each element has a
 form (old-label . new-label)."
   (let ((marker-data (latex-labeler-generate-marker-in-region region)))
     (dolist (marker-data-in-env marker-data changelist)
       (let ((result (latex-labeler-replace-labels-in-env
-                     marker-data-in-env regexp prefix counter changelist)))
+                     marker-data-in-env regexp format counter changelist)))
         (setq counter (cdr result))
         (setq changelist (car result))))))
 
@@ -586,9 +667,10 @@ Each element of CHANGELIST has a form (old-label . new-label)."
 (defun latex-labeler-find-local-variables-region ()
   "Find a local variables region in the current buffer.
 Return a list (region bol eol) if found, nil otherwise.  REGION
-represents the boundaries of the local variables region.  BOL is
-the beginning of line string, and EOL is the end of line string
-found within the local variables region."
+of the element of the return value represents the boundaries of
+the local variables region.  BOL is the beginning of line string,
+and EOL is the end of line string found within the local
+variables region."
   (let ((case-fold-search t)
         (beg nil)
         (end nil)
@@ -626,7 +708,79 @@ REGION-DATA is a value of
     (insert "\n% local\  variables:\n% latex-labeler-prefix: \""
             prefix "\"\n% end:")))
 
-;;; main
+(defun latex-labeler-separate-region-into-sections (region)
+  "Separate REGION into sections.
+Return a list whose element has a form (sec-beg . sec-end) where
+sec-beg is a point of the beginning of the section, and sec-end
+is a point of the end of the section."
+  (let ((stack nil)
+        (regexp "\\\\section[ \t\n]*\\(\\[[^][]*]\\)?[ \t\n]*")
+        (sec-beg (car region))
+        (limit (cdr region))
+        (sec-region nil))
+    (goto-char sec-beg)
+    (while (setq sec-region (latex-labeler-find-command-regexp regexp limit))
+      (push (cons sec-beg (car sec-region)) stack)
+      (setq sec-beg (cdr sec-region)))
+    (push (cons sec-beg limit) stack)
+    (nreverse stack)))
+
+(defun latex-labeler-split-at-appendix (region)
+  "Split REGION before and after \\appendix.
+Return a list that represents the divided regions.  If the LaTeX
+file does not contain \\appendix command, the car of the return
+value is (REGION)."
+  (let ((beg (car region))
+        (end (cdr region)))
+    (goto-char beg)
+    (if (latex-labeler-re-search "\\\\appendix" end t)
+        (list (cons beg (match-beginning 0))
+              (cons (match-end 0) end))
+      (list region))))
+
+(defun latex-labeler-divide-region (region)
+  "Divide REGION based on custom variables.
+If `latex-labeler-with-section-counter' is t, REGION is split into
+sections.  If `latex-labeler-with-section-counter' is nil, and
+`latex-labeler-with-appendix-letter' is t, only the appendix
+region in REGION is split into appendix sections.
+Otherwise return (REGION)."
+  (if latex-labeler-with-section-counter
+      (mapcar #'latex-labeler-separate-region-into-sections
+              (latex-labeler-split-at-appendix region))
+    (if latex-labeler-with-appendix-letter
+        (let ((regions (latex-labeler-split-at-appendix region)))
+          (list (list (car regions))
+                (latex-labeler-separate-region-into-sections (cadr regions))))
+      (list (list region)))))
+
+(defun latex-labeler-label-format (prefix &optional section)
+  "Generate label format.
+PREFIX is a label prefix.  If SECTION is non nil, the label
+format contain a section counter."
+  (concat prefix
+          latex-labeler-prefix-separator
+          (when section (latex-labeler-counter-to-string section))
+          (when section ".")))
+
+(defun latex-labeler-label-regions (regions regexp prefix section counter changelist)
+  "Label in REGIONS and return a list of label change.
+The old labels that matching REGEXP is replaced with new label.
+The label is constructed from a format and COUNTER.  The label
+format is created from PREFIX and SECTION via
+`latex-labeler-label-format'.  CHANGELIST is a list of label
+replacements with elements in the form (old-label . new-label).
+This function returns and updates the change list."
+  (dolist (region regions changelist)
+    (setq changelist
+          (latex-labeler-insert-labels
+           region regexp
+           (latex-labeler-label-format prefix section)
+           counter
+           changelist))
+    (when section
+      (setq section (latex-labeler-1+ section)))))
+
 (defun latex-labeler-main (prefix force)
   "Update equation labels and corresponding referrences.
 PREFIX is a string of the labels prefix.  If FORCE is non-nil,
@@ -636,40 +790,48 @@ matching specific format."
     (save-restriction
       (widen)
       (let ((case-fold-search nil)
-            (region (cons (point-min) (point-max)))
-            (counter latex-labeler-initial-equation-number)
+            (regions (mapcar #'latex-labeler-mark-regions
+                             (latex-labeler-divide-region
+                              (cons (point-min) (point-max)))))
             (regexp (latex-labeler-replaced-label-regexp force))
+            (section (when latex-labeler-with-section-counter
+                       (latex-labeler-1- latex-labeler-initial-section-counter)))
+            (counter latex-labeler-initial-equation-number)
+            (appendix-letter (latex-labeler-1- "A"))
             (changelist nil))
         (latex-labeler-signal-label-duplication)
-        (latex-labeler-update-ref
-         (latex-labeler-insert-labels
-          region regexp prefix counter changelist)))
-      (when (and latex-labeler-update-reftex
-                 (bound-and-true-p reftex-mode))
-        (reftex-parse-one)))))
+        (setq changelist
+              (latex-labeler-label-regions (car regions) regexp
+                                           prefix section counter
+                                           changelist))
+        (when (cadr regions)
+          (setq changelist (append
+                            (latex-labeler-label-regions
+                             (cadr regions) regexp
+                             prefix appendix-letter
+                             counter changelist)
+                            changelist)))
+        (latex-labeler-update-ref changelist)
+        (when (and latex-labeler-update-reftex
+                   (bound-and-true-p reftex-mode))
+          (reftex-parse-one))))))
 
 (defun latex-labeler-update ()
   "Update labels and references that match the predefined format."
   (interactive)
-  (let ((prefix (concat latex-labeler-prefix
-                        latex-labeler-prefix-separator)))
-    (latex-labeler-main prefix nil)))
+  (latex-labeler-main latex-labeler-prefix nil))
 
 (defun latex-labeler-update-force ()
   "Forcefully update all labels and references, regardless of the format."
   (interactive)
-  (let ((prefix (concat latex-labeler-prefix
-                        latex-labeler-prefix-separator)))
-    (latex-labeler-main prefix t)))
+  (latex-labeler-main latex-labeler-prefix t))
 
 (defun latex-labeler-change-prefix-and-update (newprefix)
   "Change the label prefix to NEWPREFIX interactively and update labels."
   (interactive (list (read-string
                       (concat "Enter a new prefix (current prefix: \""
                               latex-labeler-prefix "\"): "))))
-  (latex-labeler-main (concat newprefix
-                              latex-labeler-prefix-separator)
-                      nil)
+  (latex-labeler-main newprefix nil)
   (setq-local latex-labeler-prefix newprefix)
   (when latex-labeler-preserve-local-prefix
     (save-excursion
