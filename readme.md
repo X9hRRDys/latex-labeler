@@ -193,10 +193,10 @@ multiple files, we recommend the following workflow:
 
     ``` elisp
     (setq latex-labeler-initial-subcounter 1)
-    (setq latex-labeler-subprefix-separator "-")
+    (setq latex-labeler-subformat-separator "-")
     ```
 
-    It is important to set `(setq latex-labeler-subprefix-separator
+    It is important to set `(setq latex-labeler-subformat-separator
      "-")`. Without this, you cannot distinguish whether, for
     example, `\label{eq:31}` is a label for the first
     subequation of equation 3 or the label for the 31st equation.
