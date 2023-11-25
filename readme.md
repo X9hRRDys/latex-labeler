@@ -170,7 +170,7 @@ multiple files, we recommend the following workflow:
     `\end{newenv}`, configure it as follows:
 
     ``` elisp
-    (setq latex-labeler-math-envs (append latex-labeler-math-envs '("newenv")))
+    (add-to-list 'latex-labeler-math-envs "newenv" t)
     ```
 
     Replace \"newenv\" with the actual name of the environment you want
