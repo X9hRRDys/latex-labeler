@@ -144,6 +144,12 @@ multiple files, we recommend the following workflow:
     labels that do not follow the prefix + number format. Use
     `latex-labeler-update` to update labels within the file.
 
+4.  If you need to modify label names that do not follow the prefix +
+    number format, use built-in commands in Emacs. For instance, when
+    managing LaTeX files as a project, you can use
+    `project-query-replace-regexp`, which is bound to `C-x` `p` `r`.
+    This command replaces multiple files within the project.
+
 # Examples of customization
 
 -   To assign key bindings to the three main functions, you can set them
