@@ -148,7 +148,6 @@ multiple files, we recommend the following workflow:
     number format, use built-in commands in Emacs. For instance, when
     managing LaTeX files as a project, you can use
     `project-query-replace-regexp`, which is bound to `C-x` `p` `r`.
-    This command replaces multiple files within the project.
 
 # Examples of customization
 
