@@ -1,13 +1,12 @@
 ;;; latex-labeler.el --- Simplify equation labeling in LaTeX -*- lexical-binding: t -*-
 
-;; Copyright (C) 2023 X9hRRDys
+;; Copyright (C) 2023-2024 X9hRRDys
 
 ;; Author: X9hRRDys
-;; Keywords: tools
-
-;; Created: 2023
-;; Version: 2.0.0
+;; Created: October 4, 2023
+;; Version: 2.1.0
 ;; Package-Requires: ((emacs "28.1"))
+;; Keywords: tools
 ;; URL: https://github.com/X9hRRDys/latex-labeler
 
 ;; This program is free software; you can redistribute it and/or
