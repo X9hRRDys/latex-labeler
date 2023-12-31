@@ -30,7 +30,7 @@ when used with the built-in `latex-mode`, especially when labeling
 equations within `subequations` environment. We recommend using LaTeX
 Labeler with AUCTeX or YaTeX.
 
-# Installation
+# Getting started
 
 1.  LaTeX Labeler is available on
     [MELPA](https://melpa.org/#/latex-labeler):
@@ -43,6 +43,14 @@ Labeler with AUCTeX or YaTeX.
 
     ``` elisp
     (with-eval-after-load 'latex (require 'latex-labeler))
+    ```
+
+    Additionaly, it is recommended to add the following code.  This
+    code suppresses the prompt for inserting an equation label when
+    executing the `LaTeX-environment` command (`C-c` `C-e`):
+
+    ``` elisp
+    (setq LaTeX-equation-label nil)
     ```
 
     If you use YaTeX instead of AUCTeX, add the following code:
@@ -94,7 +102,7 @@ updating references.
 
     ![](https://github.com/X9hRRDys/latex-labeler/blob/screenshots/screenshots/latex_labeler_change_prefix_and_update.png)
 
-## Label format with section counters
+## Label format with section numbers
 
 When working with a LaTeX file that includes sections, you can include
 the section number in equation numbering in the compiled
@@ -115,6 +123,19 @@ file:
 % local variables:
 % latex-labeler-with-section-counter: t
 % end:
+```
+
+If you use AUCTeX and want to apply this configuration to all LaTeX
+files within a particular directory, create a file named
+`.dir-locals.el` in that directory and add the following lines in
+`.dir-locals.el` (alternatively, you can achieve this by running the
+command `M-x` `add-dir-local-variables`):
+
+``` elisp
+;;; Directory Local Variables            -*- no-byte-compile: t -*-
+;;; For more information see (info "(emacs) Directory Variables")
+
+((latex-mode . ((latex-labeler-with-section-counter . t))))
 ```
 
 If you prefer to set this configuration globally, add the following
@@ -148,9 +169,10 @@ files, we recommend the following workflow:
     `latex-labeler-update` to update labels within the file.
 
 4.  If you need to modify label names that do not follow the prefix +
-    number format, use built-in commands in Emacs. For instance, when
-    managing LaTeX files as a project, you can use
-    `project-query-replace-regexp`, which is bound to `C-x` `p` `r`.
+    number format across multiple files, you can use built-in commands
+    in Emacs. For instance, when managing LaTeX files as a project,
+    you can use `project-query-replace-regexp`, which is bound to
+    `C-x` `p` `r`.
 
 # Examples of customization
 
@@ -164,13 +186,15 @@ files, we recommend the following workflow:
       (define-key LaTeX-mode-map (kbd "C-c t p") #'latex-labeler-change-prefix-and-update))
     ```
 
-    If you use YaTeX,
+    If you use YaTeX, substitute `'latex` with `'yatex`, and
+    `LaTeX-mode-map` with `YaTeX-mode-map`.
 
-    ``` elisp
-    (with-eval-after-load 'yatex
-      (define-key YaTeX-mode-map (kbd "C-c C-t u") #'latex-labeler-update)
-      (define-key YaTeX-mode-map (kbd "C-c C-t f") #'latex-labeler-update-force)
-      (define-key YaTeX-mode-map (kbd "C-c C-t p") #'latex-labeler-change-prefix-and-update))
+-   If you use AUCTeX and always want to run `latex-labeler-update`
+    before `TeX-command-master` bound to `C-c` `C-c`, configure it as
+    follows:
+
+    ```elisp
+    (advice-add 'TeX-command-master :before #'latex-labeler-update)
     ```
 
 -   You can add math environments to be labeled. If you want to label
