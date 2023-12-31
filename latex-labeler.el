@@ -572,9 +572,10 @@ format.  If FORCE is nil, it will match labels following the
 specific format defined by the `latex-labeler-label-format`."
   (if force
       "[^{}]*"
-    (concat "^" latex-labeler-prefix latex-labeler-prefix-separator
-            "\\([a-zA-Z]\.\\|[0-9]+\.\\)?"
-            "[0-9]+\\(" latex-labeler-subformat-separator
+    (concat "^" (regexp-quote latex-labeler-prefix)
+            (regexp-quote latex-labeler-prefix-separator)
+            "\\([`a-z@A-Z]\.\\|[0-9]+\.\\)?"
+            "[0-9]+\\(" (regexp-quote latex-labeler-subformat-separator)
             "\\([a-zA-Z]\\|[0-9]+\\)\\)?$")))
 
 (defun latex-labeler-replace-old-label (marker label regexp format counter
@@ -590,8 +591,8 @@ label replacements."
     (let ((newlabel (concat format (latex-labeler-counter-to-string counter))))
       (unless (string= label newlabel)
         (goto-char marker)
-        (looking-at label)
-        (replace-match newlabel t)
+        (looking-at (regexp-quote label))
+        (replace-match newlabel t t)
         (push (cons label newlabel) changelist))))
   changelist)
 
@@ -662,7 +663,7 @@ Each element of CHANGELIST has a form (old-label . new-label)."
           nil t)
     (let ((newlabel (cdr (assoc (match-string-no-properties 2) changelist))))
       (when newlabel
-        (replace-match newlabel t nil nil 2)))))
+        (replace-match newlabel t t nil 2)))))
 
 (defun latex-labeler-find-local-variables-region ()
   "Find a local variables region in the current buffer.
@@ -699,7 +700,7 @@ REGION-DATA is a value of
         (if (re-search-forward
              (concat bol "[ \t]*latex-labeler-prefix:[ \t]*\"\\(.*\\)\"[ \t]*" eol)
              (cdr region) t)
-            (replace-match prefix t nil nil 1)
+            (replace-match prefix t t nil 1)
           (goto-char (cdr region))
           (insert bol
                   "latex-labeler-prefix: \"" prefix "\" "
@@ -831,14 +832,14 @@ matching specific format."
   (interactive (list (read-string
                       (concat "Enter a new prefix (current prefix: \""
                               latex-labeler-prefix "\"): "))))
-  (latex-labeler-main newprefix nil)
-  (setq-local latex-labeler-prefix newprefix)
   (when latex-labeler-preserve-local-prefix
     (save-excursion
       (save-restriction
         (widen)
         (latex-labeler-insert-prefix-setting
-         (latex-labeler-find-local-variables-region) newprefix)))))
+         (latex-labeler-find-local-variables-region) newprefix))))
+  (latex-labeler-main newprefix nil)
+  (setq-local latex-labeler-prefix newprefix))
 
 (provide 'latex-labeler)
 ;;; latex-labeler.el ends here
