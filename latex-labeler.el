@@ -4,7 +4,7 @@
 
 ;; Author: X9hRRDys
 ;; Created: October 4, 2023
-;; Version: 2.1.0
+;; Version: 2.1.1
 ;; Package-Requires: ((emacs "28.1"))
 ;; Keywords: tools
 ;; URL: https://github.com/X9hRRDys/latex-labeler
@@ -235,7 +235,7 @@ Return a list whose element has a form (label-name
 . label-position)."
   (let ((stack nil))
     (goto-char (point-min))
-    (while (latex-labeler-re-search "\\\\label{\\([^{}]*\\)}" nil t)
+    (while (latex-labeler-re-search "\\\\label[ \t]*\n?[ \t]*{\\([^{}]*\\)}" nil t)
       (push (cons (match-string-no-properties 1)
                   (match-beginning 1))
             stack))
@@ -277,7 +277,7 @@ The optional argument LIMIT is a position that bounds the search."
   (let ((level 1))
     (while (and (/= level 0)
                 (latex-labeler-re-search
-                 (concat "\\\\\\(begin\\|end\\){" envname "}")
+                 (concat "\\\\\\(begin\\|end\\)[ \t]*\n?[ \t]*{" envname "}")
                  limit t))
       (if (string= "begin" (match-string-no-properties 1))
           (setq level (1+ level))
@@ -290,7 +290,7 @@ Return a list that has a form ((beg . end) envname), where beg
 and end are inner boundaries of a math environment.  The optional
 argument LIMIT is a position that bounds the search."
   (when (latex-labeler-re-search
-         (concat "\\\\begin{\\("
+         (concat "\\\\begin[ \t]*\n?[ \t]*{\\("
                  (mapconcat #'identity latex-labeler-math-envs "\\|") "\\)}")
          limit t)
     (let ((env-beg (match-end 0))
@@ -322,7 +322,7 @@ regions, each represented as (nest-beg . nest-end)."
   (goto-char (car region))
   (let ((stack nil)
         (limit (cdr region)))
-    (while (latex-labeler-re-search "\\\\begin{\\([^{}]*\\)}" limit t)
+    (while (latex-labeler-re-search "\\\\begin[ \t]*\n?[ \t]*{\\([^{}]*\\)}" limit t)
       (let ((nest-beg (match-beginning 0))
             (nest-env (match-string-no-properties 1)))
         (latex-labeler-find-corresponding-end nest-env limit)
@@ -348,7 +348,7 @@ boundaries of a math environment."
 Return a dot pair whose CAR is the position of the beginning of
 the `REGEXP{...}' and CDR is the end.  The optional argument
 LIMIT is a position that bounds the search."
-  (when (latex-labeler-re-search (concat regexp "{") limit t)
+  (when (latex-labeler-re-search (concat regexp "[ \t]*\n?[ \t]*{") limit t)
     (backward-char)
     (forward-sexp)
     (cons (match-beginning 0) (point))))
@@ -374,7 +374,7 @@ Each element of REGIONS mutst have a form (beg . end)."
                    (mapconcat #'identity
                               latex-labeler-commands-containing-linebreaks
                               "\\|")
-                   "\\)[ \t\n]*")
+                   "\\)")
                   (cdr region)))
       (push result stack))
     (nreverse stack)))
@@ -449,7 +449,7 @@ REGION must have a form (beg . end).  Return a list of the old
 label position and its label name.  Return nil if there are no
 labels in REGION."
   (goto-char (car region))
-  (if (latex-labeler-re-search "\\\\label{\\([^{}]*\\)}" (cdr region) t)
+  (if (latex-labeler-re-search "\\\\label[ \t]*\n?[ \t]*{\\([^{}]*\\)}" (cdr region) t)
       (cons (match-beginning 1) (match-string-no-properties 1))
     (cons (cdr region) nil)))
 
@@ -461,7 +461,7 @@ otherwise."
   (let ((result nil))
     (while (and regions (not result))
       (goto-char (caar regions))
-      (if (latex-labeler-re-search "\\\\label{\\([^{}]*\\)}" (cdar regions) t)
+      (if (latex-labeler-re-search "\\\\label[ \t]*\n?[ \t]*{\\([^{}]*\\)}" (cdar regions) t)
           (setq result (cons (match-beginning 1)
                              (match-string-no-properties 1)))
         (if (cdr regions)
@@ -678,7 +678,7 @@ Each element of CHANGELIST has a form (old-label . new-label)."
   (goto-char (point-min))
   (while (latex-labeler-re-search
           (concat "\\\\\\(" (mapconcat #'identity latex-labeler-refs "\\|")
-                  "\\){\\([^{}]*\\)}")
+                  "\\)[ \t]*\n?[ \t]*{\\([^{}]*\\)}")
           nil t)
     (let ((newlabel (cdr (assoc (match-string-no-properties 2) changelist))))
       (when newlabel
@@ -734,7 +734,7 @@ Return a list whose element has a form (sec-beg . sec-end) where
 sec-beg is a point of the beginning of the section, and sec-end
 is a point of the end of the section."
   (let ((stack nil)
-        (regexp "\\\\section[ \t\n]*\\(\\[[^][]*]\\)?[ \t\n]*")
+        (regexp "\\\\section[ \t]*\n?[ \t]*\\(\\[[^][]*]\\)?")
         (sec-beg (car region))
         (limit (cdr region))
         (sec-region nil))
