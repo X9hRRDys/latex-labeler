@@ -42,7 +42,7 @@ Labeler with AUCTeX or YaTeX.
     configuration file (e.g. `~/.emacs.d/init.el`):
 
     ``` elisp
-    (with-eval-after-load 'latex (require 'latex-labeler))
+    (add-hook 'LaTeX-mode-hook #'latex-labeler-mode)
     ```
 
     Additionaly, it is recommended to add the following code.  This
@@ -56,7 +56,7 @@ Labeler with AUCTeX or YaTeX.
     If you use YaTeX instead of AUCTeX, add the following code:
 
     ``` elisp
-    (with-eval-after-load 'yatex (require 'latex-labeler))
+    (add-hook 'yatex-mode-hook #'latex-labeler-mode)
     ```
 
 # Usage
@@ -148,7 +148,7 @@ line to your Emacs configuration file:
 After the `\appendix` command, appropriate letters are added as
 section counters instead of numbers.
 
-![](https://github.com/X9hRRDys/latex-labeler/blob/screenshots/screenshots/label_with_section_numbers.png)
+![](https://github.com/X9hRRDys/latex-labeler/blob/screenshots/screenshots/label_with_section_counter.png)
 
 ## Note for multi-file documents
 
@@ -176,18 +176,15 @@ files, we recommend the following workflow:
 
 # Examples of customization
 
--   To assign key bindings to the three main functions, you can set
-    them up as follows. If you use AUCTeX,
+-   To assign key bindings to the three main functions, configure it as
+    follows:
 
     ``` elisp
-    (with-eval-after-load 'latex
-      (define-key LaTeX-mode-map (kbd "C-c t u") #'latex-labeler-update)
-      (define-key LaTeX-mode-map (kbd "C-c t f") #'latex-labeler-update-force)
-      (define-key LaTeX-mode-map (kbd "C-c t p") #'latex-labeler-change-prefix-and-update))
+    (with-eval-after-load 'latex-labeler
+      (define-key latex-labeler-mode-map (kbd "C-c t u") #'latex-labeler-update)
+      (define-key latex-labeler-mode-map (kbd "C-c t f") #'latex-labeler-update-force)
+      (define-key latex-labeler-mode-map (kbd "C-c t p") #'latex-labeler-change-prefix-and-update))
     ```
-
-    If you use YaTeX, substitute `'latex` with `'yatex`, and
-    `LaTeX-mode-map` with `YaTeX-mode-map`.
 
 -   If you use AUCTeX and always want to run `latex-labeler-update`
     before `TeX-command-master` bound to `C-c` `C-c`, configure it as
@@ -247,18 +244,20 @@ files, we recommend the following workflow:
 
 # Custom variables
 
--   `latex-labeler-math-envs`: A list of math environments that should
-    be labeled. Default is `'("align" "equation" "eqnarray" "gather"
+-   `latex-labeler-math-envs`: A list of math environments to be
+    labeled. Default is `'("align" "equation" "eqnarray" "gather"
     "multline" "subequations" "alignat" "flalign")` .
 
--   `latex-labeler-nonumber-at-linebreaks`: Math environments where
-    line breaks occur without numbering. Default is `'("multline"
+-   `latex-labeler-nonumber-at-linebreaks`: A list of math
+    environments where line breaks occur without labeling.  Elements
+    of this list must be contained in elements of
+    `latex-labeler-math-envs`. Default is `'("multline"
     "subequations")` .
 
--   `latex-labeler-refs`: A list of reference command types.  Default
-    is `'("eqref" "ref" "pageref")`.
+-   `latex-labeler-refs`: A list of reference commands. Default is
+    `'("eqref" "ref" "pageref")`.
 
--   `latex-labeler-commands-containing-linebreaks`: List of commands
+-   `latex-labeler-commands-containing-linebreaks`: A list of commands
     that can have line breaks `\\`. Line breaks in the commands will
     be ignored in the search. Default is `'("substack")`
 
@@ -271,8 +270,11 @@ files, we recommend the following workflow:
 -   `latex-labeler-prefix`: The prefix for generated labels.  Default
     is `"eq"`.
 
--   `latex-labeler-prefix-separator`: The separator between the prefix
-    and counter. Default is `":"`.
+-   `latex-labeler-prefix-separator`: The separator after the
+    prefix. Default is `":"`.
+
+-   `latex-labeler-section-separator`: The separator after the section
+    countor. Default is `.`.
 
 -   `latex-labeler-subformat-separator`: The separator between
     subformat and counter. Default is an empty string `""`.
