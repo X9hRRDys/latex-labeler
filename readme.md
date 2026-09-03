@@ -45,7 +45,7 @@ Labeler with AUCTeX or YaTeX.
     (add-hook 'LaTeX-mode-hook #'latex-labeler-mode)
     ```
 
-    Additionaly, it is recommended to add the following code.  This
+    Additionally, it is recommended to add the following code.  This
     code suppresses the prompt for inserting an equation label when
     executing the `LaTeX-environment` command (`C-c` `C-e`):
 
@@ -274,7 +274,7 @@ files, we recommend the following workflow:
     prefix. Default is `":"`.
 
 -   `latex-labeler-section-separator`: The separator after the section
-    countor. Default is `.`.
+    counter. Default is `.`.
 
 -   `latex-labeler-subformat-separator`: The separator between
     subformat and counter. Default is an empty string `""`.

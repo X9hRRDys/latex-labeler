@@ -1,10 +1,10 @@
 ;;; latex-labeler.el --- Simplify equation labeling in LaTeX -*- lexical-binding: t -*-
 
-;; Copyright (C) 2023-2024 X9hRRDys
+;; Copyright (C) 2023-2026 X9hRRDys
 
 ;; Author: X9hRRDys
 ;; Created: October 4, 2023
-;; Version: 3.0.0
+;; Version: 3.0.1
 ;; Package-Requires: ((emacs "28.1"))
 ;; Keywords: tools
 ;; URL: https://github.com/X9hRRDys/latex-labeler
@@ -47,7 +47,7 @@
 ;;
 ;; (add-hook 'LaTeX-mode-hook #'latex-labeler-mode)
 ;;
-;; Additionaly, it is recommended to add the following code.  This
+;; Additionally, it is recommended to add the following code.  This
 ;; code suppresses the prompt for inserting an equation label when
 ;; executing the `LaTeX-environment' command (C-c C-e):
 ;;
@@ -355,7 +355,7 @@ regions, each represented as (nest-beg . nest-end)."
     (nreverse stack)))
 
 (defun latex-labeler--find-non-nested-regions (region)
-  "Retern non-nested regions in REGION.
+  "Return non-nested regions in REGION.
 REGION must have a form (beg . end), where beg and end are inner
 boundaries of a math environment."
   (let ((stack nil)
@@ -482,7 +482,7 @@ labels in REGION."
 (defun latex-labeler--find-old-label-in-regions (regions)
   "Find an old label in REGIONS.
 Each element of REGIONS has a form (beg . end).  If the search
-succeeds, return a dot pair (position . labe-lname), and nil
+succeeds, return a dot pair (position . label-name), and nil
 otherwise."
   (let ((result nil))
     (while (and regions (not result))
@@ -711,50 +711,6 @@ Each element of CHANGELIST has a form (old-label . new-label)."
       (when newlabel
         (replace-match newlabel t t nil 2)))))
 
-(defun latex-labeler--find-local-variables-region ()
-  "Find a local variables region in the current buffer.
-Return a list (region bol eol) if found, nil otherwise.  REGION
-of the element of the return value represents the boundaries of
-the local variables region.  BOL is the beginning of line string,
-and EOL is the end of line string found within the local
-variables region."
-  (let ((case-fold-search t)
-        (beg nil)
-        (end nil)
-        (bol nil)
-        (eol nil))
-    (goto-char (point-min))
-    (when (re-search-forward
-           "\\(^[ \t]*%+[ \t]*\\)local\  variables:[ \t]*\\(.*\\)" nil t)
-      (setq beg (match-end 0))
-      (setq bol (match-string-no-properties 1))
-      (setq eol (match-string-no-properties 2))
-      (when (re-search-forward (concat bol "end:[ \t]*" eol) nil t)
-        (setq end (match-beginning 0))))
-    (when (and beg end)
-      (list (cons beg end) bol eol))))
-
-(defun latex-labeler--insert-prefix-setting (region-data prefix)
-  "Insert or update prefix setting with PREFIX.
-REGION-DATA is a value of
-`latex-labeler--find-local-variables-region'."
-  (if region-data
-      (let ((region (car region-data))
-            (bol (cadr region-data))
-            (eol (caddr region-data)))
-        (goto-char (car region))
-        (if (re-search-forward
-             (concat bol "[ \t]*latex-labeler-prefix:[ \t]*\"\\(.*\\)\"[ \t]*" eol)
-             (cdr region) t)
-            (replace-match prefix t t nil 1)
-          (goto-char (cdr region))
-          (insert bol
-                  "latex-labeler-prefix: \"" prefix "\" "
-                  eol "\n")))
-    (goto-char (point-max))
-    (insert "\n% local\  variables:\n% latex-labeler-prefix: \""
-            prefix "\"\n% end:")))
-
 (defun latex-labeler--separate-region-into-sections (region)
   "Separate REGION into sections.
 Return a list whose element has a form (sec-beg . sec-end) where
@@ -888,8 +844,7 @@ matching specific format."
     (save-excursion
       (save-restriction
         (widen)
-        (latex-labeler--insert-prefix-setting
-         (latex-labeler--find-local-variables-region) newprefix))))
+        (add-file-local-variable 'latex-labeler-prefix newprefix))))
   (latex-labeler--main newprefix nil)
   (setq-local latex-labeler-prefix newprefix))
 
